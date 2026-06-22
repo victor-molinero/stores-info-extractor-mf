@@ -511,6 +511,12 @@ function extractUnitAndTotalFromCartItem(root, quantity) {
 
 function collectCartLineRows() {
   const listItems = [...getProductTileContainers()]
+    .flatMap((container) => {
+      const itemNodes = [...container.querySelectorAll("li")]
+        .filter((node) => isCartLikeContainer(node));
+
+      return itemNodes.length > 0 ? itemNodes : [container];
+    })
     .filter((item) => isCartLikeContainer(item));
 
   const rows = [];
