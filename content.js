@@ -434,7 +434,7 @@ function extractQuantityFromCartButtons(root) {
   const controlButtons = [...root.querySelectorAll("button[aria-label]")];
   for (const button of controlButtons) {
     const label = button.getAttribute("aria-label") || "";
-    const match = label.match(/cantidad\s+actual\s+de\s+(\d{1,3})/i);
+    const match = label.match(/(?:cantidad\s+actual\s+de|qty|quantity|cantidad)\D{0,20}(\d{1,3})/i);
     if (!match) {
       continue;
     }
@@ -446,6 +446,18 @@ function extractQuantityFromCartButtons(root) {
   }
 
   return null;
+}
+
+function isCartLikeContainer(root) {
+  if (!(root instanceof Element)) {
+    return false;
+  }
+
+  const hasProductName = Boolean(extractProductName(root));
+  const hasQtyControl = hasQuantityControl(root) || Number.isInteger(extractQuantityFromCartButtons(root));
+  const hasPriceSignals = findAllMoneyValues(root.textContent || "").length > 0;
+
+  return hasProductName && (hasQtyControl || hasPriceSignals);
 }
 
 function extractUnitAndTotalFromCartItem(root, quantity) {
@@ -491,8 +503,8 @@ function extractUnitAndTotalFromCartItem(root, quantity) {
 }
 
 function collectCartLineRows() {
-  const listItems = [...document.querySelectorAll("li")]
-    .filter((item) => item.querySelector("button[aria-label*='cantidad actual de' i]"));
+  const listItems = [...document.querySelectorAll("li, article, [data-testid*='cart-item' i], [data-testid*='product-tile' i], [class*='cart-item' i], [class*='cart-product-tile' i]")]
+    .filter((item) => isCartLikeContainer(item));
 
   const rows = [];
 
@@ -577,10 +589,11 @@ function collectDomCartRows() {
   roots.forEach((root, index) => {
     const productName = extractProductName(root);
     const hasStepper = hasQuantityControl(root);
-    const quantity = extractQuantityFromStepper(root);
+    const quantity = extractQuantityFromCartButtons(root) || extractQuantityFromStepper(root);
     const priceInfo = extractPrices(root, quantity);
 
-    if (!productName || !hasStepper) {
+    // Some Firefox/cart variants do not expose a quantity stepper but still contain valid item rows.
+    if (!productName || (!hasStepper && quantity <= 0)) {
       return;
     }
 
@@ -635,10 +648,6 @@ function collectStructuredRows() {
     } catch (error) {
       console.error("Unable to parse __NEXT_DATA__", error);
     }
-  }
-
-  if (window.__WML_REDUX_INITIAL_STATE__) {
-    structures.push(window.__WML_REDUX_INITIAL_STATE__);
   }
 
   const lineItems = [];
