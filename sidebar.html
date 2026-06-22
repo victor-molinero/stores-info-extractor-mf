@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Stores Info Extractor</title>
+  <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="header">
+      <h1>Stores Info Extractor</h1>
+      <p>Choose extraction mode, extract page by page, then download or reset session data.</p>
+    </div>
+
+    <div class="card">
+      <label for="mode-select" class="mode-label">Extraction mode</label>
+      <select id="mode-select"></select>
+      <p id="mode-help" class="mode-help"></p>
+
+      <div id="status">Ready to extract from the current page.</div>
+      <div class="actions">
+        <button id="extract">Extract current page</button>
+        <button id="download">Download CSV</button>
+        <button id="reset">Reset data</button>
+      </div>
+    </div>
+
+    <div class="card results-card">
+      <div id="count">No rows saved yet</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr id="table-head-row"></tr>
+          </thead>
+          <tbody id="rows-body">
+            <tr>
+              <td class="empty" colspan="1">No extracted rows yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="sidebar.js"></script>
+</body>
+</html>

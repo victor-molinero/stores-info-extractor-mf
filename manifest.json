@@ -1,0 +1,53 @@
+{
+  "manifest_version": 2,
+  "name": "Stores Info Extractor",
+  "version": "1.0.0",
+  "description": "Extract purchase information from Amazon and Walmart pages with selectable extraction modes.",
+  "permissions": [
+    "activeTab",
+    "downloads",
+    "storage",
+    "https://www.amazon.com.mx/*",
+    "https://www.amazon.com/*",
+    "https://www.walmart.com.mx/lists",
+    "https://www.walmart.com.mx/lists/*",
+    "https://www.walmart.com.mx/cart",
+    "https://www.walmart.com.mx/cart/*"
+  ],
+  "browser_action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "sidebar_action": {
+    "default_title": "Stores Info Extractor",
+    "default_panel": "sidebar.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.amazon.com.mx/*",
+        "https://www.amazon.com/*",
+        "https://www.walmart.com.mx/lists",
+        "https://www.walmart.com.mx/lists/*",
+        "https://www.walmart.com.mx/cart",
+        "https://www.walmart.com.mx/cart/*"
+      ],
+      "js": ["content.js"]
+    }
+  ]
+}

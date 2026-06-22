@@ -1,0 +1,163 @@
+export const MODE_KEY = "selectedExtractionMode";
+
+export const DEFAULT_CATEGORY = "No category";
+
+export const CATEGORY_OPTIONS = [
+  "Clothing & Apparel | Casual Wear",
+  "Education & Work Tools | Digital Books Subscription",
+  "Education & Work Tools | Electronics",
+  "Education & Work Tools | Learning Platform",
+  "Education & Work Tools | Mobile Service",
+  "Education & Work Tools | Software Subscription",
+  "Entertainment & Leisure | Streaming",
+  "Food | Beverages",
+  "Food | Dining Out",
+  "Food | Groceries",
+  "Food | Snacks",
+  "Health & Personal Care | Haircare",
+  "Health & Personal Care | Medication",
+  "Health & Personal Care | Nutrition & Supplements",
+  "Health & Personal Care | Oral Care",
+  "Health & Personal Care | Skincare",
+  "Health & Personal Care | Supplements",
+  "Housing & Utilities | Cleaning Supplies",
+  "Housing & Utilities | Electricity",
+  "Housing & Utilities | Gas",
+  "Housing & Utilities | Household Supplies",
+  "Housing & Utilities | Internet Service",
+  "Housing & Utilities | Maintenance & Repairs",
+  "Housing & Utilities | Rent",
+  "No category",
+  "Pet Care | Dog Food",
+  "Pet Care | Pet Supplies",
+  "Transportation | Rideshare",
+  "Transportation | Subscription",
+];
+
+export const CATEGORY_OPTION_SET = new Set(CATEGORY_OPTIONS);
+
+// Utility function used within this module
+function normalizeCategoryInConfig(category) {
+  return CATEGORY_OPTION_SET.has(category) ? category : DEFAULT_CATEGORY;
+}
+
+export const MODES = {
+  amazonOrders: {
+    id: "amazonOrders",
+    label: "Amazon Orders",
+    helpText: "Open Amazon order history page, extract page by page, then download CSV.",
+    urlHint: "https://www.amazon.com.mx/gp/css/order-history/",
+    action: "extract-orders",
+    storageKey: "rows_amazon_orders",
+    filename: "amazon_orders.csv",
+    emptyMessage: "No order cards were found on this page.",
+    statusPrefix: "Reading the current Amazon orders page...",
+    appendMode: true,
+    columns: [
+      { key: "orderId", label: "OrderNumber" },
+      { key: "orderStatus", label: "Status" },
+      { key: "date", label: "Date" },
+      { key: "itemDescription", label: "Item Description" },
+      { key: "price", label: "Price" },
+      { key: "category", label: "Category" },
+    ],
+    csvColumns: ["OrderNumber", "Status", "Date", "Item Description", "Price", "Category"],
+    csvRow: (row) => [row.orderId, row.orderStatus, row.date, row.itemDescription, row.price, row.category],
+    rowKey: (row) => [row.orderId, row.orderStatus, row.date, row.itemDescription, row.price].join("|"),
+    normalize: (row) => ({
+      orderId: row?.orderId || "",
+      orderStatus: row?.orderStatus || "",
+      date: row?.date || "",
+      itemDescription: row?.itemDescription || "",
+      price: row?.price || "",
+      category: normalizeCategoryInConfig(row?.category),
+    }),
+  },
+  amazonTransactions: {
+    id: "amazonTransactions",
+    label: "Amazon Transactions",
+    helpText: "Open Amazon Your Payments transactions page and extract page by page.",
+    urlHint: "https://www.amazon.com.mx/cpe/yourpayments/transactions",
+    action: "extract-transactions",
+    storageKey: "rows_amazon_transactions",
+    filename: "amazon_transactions.csv",
+    emptyMessage: "No transaction rows were found on this page.",
+    statusPrefix: "Reading the current Amazon transactions page...",
+    appendMode: true,
+    columns: [
+      { key: "date", label: "Date" },
+      { key: "account", label: "Account" },
+      { key: "orderNumber", label: "OrderNumber" },
+      { key: "amount", label: "Amount" },
+    ],
+    csvColumns: ["Date", "Account", "OrderNumber", "Amount"],
+    csvRow: (row) => [row.date, row.account, row.orderNumber, row.amount],
+    rowKey: (row) => [row.date, row.account, row.orderNumber, row.amount].join("|"),
+    normalize: (row) => ({
+      date: row?.date || "",
+      account: row?.account || "",
+      orderNumber: row?.orderNumber || "",
+      amount: row?.amount || "",
+    }),
+  },
+  walmartPrices: {
+    id: "walmartPrices",
+    label: "Walmart List Prices",
+    helpText: "Open a Walmart list page and extract product rows.",
+    urlHint: "https://www.walmart.com.mx/lists",
+    action: "extract-walmart-prices",
+    storageKey: "rows_walmart_prices",
+    filename: "walmart_prices.csv",
+    emptyMessage: "No product rows were found on this page.",
+    statusPrefix: "Reading the current Walmart list page...",
+    appendMode: true,
+    columns: [
+      { key: "product", label: "Product" },
+      { key: "price", label: "Price" },
+      { key: "category", label: "Category" },
+    ],
+    csvColumns: ["Product", "Price", "Category"],
+    csvRow: (row) => [row.product, row.price, row.category],
+    rowKey: (row) => [row.itemId, row.product, row.price].join("|"),
+    normalize: (row) => ({
+      itemId: row?.itemId || "",
+      product: row?.product || "",
+      price: row?.price || "",
+      category: normalizeCategoryInConfig(row?.category),
+    }),
+  },
+  walmartCart: {
+    id: "walmartCart",
+    label: "Walmart Cart",
+    helpText: "Open Walmart cart page and extract ProductName, Quantity, Unit Price, and Total.",
+    urlHint: "https://www.walmart.com.mx/cart",
+    action: "extract-walmart-cart",
+    storageKey: "rows_walmart_cart",
+    filename: () => {
+      const now = new Date();
+      const pad = (value) => String(value).padStart(2, "0");
+      return `walmart_cart_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.csv`;
+    },
+    emptyMessage: "No cart rows were found on this page.",
+    statusPrefix: "Reading the current Walmart cart page...",
+    appendMode: false,
+    columns: [
+      { key: "productName", label: "ProductName" },
+      { key: "quantity", label: "Quantity" },
+      { key: "unitPrice", label: "Unit Price" },
+      { key: "total", label: "Total" },
+      { key: "category", label: "Category" },
+    ],
+    csvColumns: ["ProductName", "Quantity", "Unit Price", "Total", "Category"],
+    csvRow: (row) => [row.productName, row.quantity, row.unitPrice, row.total, row.category],
+    rowKey: (row) => [row.itemId || "", row.productName, row.quantity, row.unitPrice, row.total].join("|"),
+    normalize: (row) => ({
+      itemId: row?.itemId || "",
+      productName: row?.productName || "",
+      quantity: Number.isInteger(row?.quantity) && row.quantity > 0 ? row.quantity : 1,
+      unitPrice: row?.unitPrice || "",
+      total: row?.total || "",
+      category: normalizeCategoryInConfig(row?.category),
+    }),
+  },
+};
