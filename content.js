@@ -460,6 +460,13 @@ function isCartLikeContainer(root) {
   return hasProductName && (hasQtyControl || hasPriceSignals);
 }
 
+function getProductTileContainers() {
+  return [
+    ...document.querySelectorAll("[data-testid='product-tile-container']"),
+    ...document.querySelectorAll("[data-testid*='product-tile-container' i]"),
+  ];
+}
+
 function extractUnitAndTotalFromCartItem(root, quantity) {
   const text = normalizeText(root.textContent || "");
   const unitMatch = text.match(/(\$\s*[0-9][0-9,]*(?:\.\d{1,2})?)\s*\/\s*pza/i);
@@ -503,7 +510,7 @@ function extractUnitAndTotalFromCartItem(root, quantity) {
 }
 
 function collectCartLineRows() {
-  const listItems = [...document.querySelectorAll("li, article, [data-testid*='cart-item' i], [data-testid*='product-tile' i], [class*='cart-item' i], [class*='cart-product-tile' i]")]
+  const listItems = [...getProductTileContainers()]
     .filter((item) => isCartLikeContainer(item));
 
   const rows = [];
@@ -545,6 +552,8 @@ function findClosestItemRoot(node) {
   }
 
   const selectors = [
+    "[data-testid='product-tile-container']",
+    "[data-testid*='product-tile-container' i]",
     "[data-testid*='cart-item' i]",
     "[data-testid*='product-tile' i]",
     "[class*='cart-product-tile' i]",
@@ -576,6 +585,7 @@ function collectDomCartRows() {
     .filter(Boolean);
 
   const fallbackRoots = [
+    ...getProductTileContainers(),
     ...document.querySelectorAll("[data-testid*='cart-item' i]"),
     ...document.querySelectorAll("[data-testid*='product-tile' i]"),
     ...document.querySelectorAll("[class*='cart-product-tile' i]"),
