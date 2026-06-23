@@ -461,36 +461,24 @@ function isCartLikeContainer(root) {
 }
 
 function getProductTileContainers() {
-  return [
+  return [...new Set([
     ...document.querySelectorAll("[data-testid='product-tile-container']"),
     ...document.querySelectorAll("[data-testid*='product-tile-container' i]"),
-  ];
+  ])];
 }
 
 function extractUnitAndTotalFromCartItem(root, quantity) {
   const text = normalizeText(root.textContent || "");
-  const unitMatch = text.match(/(\$\s*[0-9][0-9,]*(?:\.\d{1,2})?)\s*\/\s*pza/i);
+  const descriptionText = normalizeText(
+    root.querySelector("[data-testid='productDescription']")?.textContent || "",
+  );
+
+  // Prefer product description price (e.g. "$209.00/pza") over promo/installment sections.
+  const preferredUnitMatch = descriptionText.match(/(\$\s*[0-9][0-9,]*(?:\.\d{1,2})?)\s*\/\s*pza/i);
+  const unitMatch = preferredUnitMatch || text.match(/(\$\s*[0-9][0-9,]*(?:\.\d{1,2})?)\s*\/\s*pza/i);
   const unitValue = parseMoney(unitMatch?.[1] || "");
 
-  const nonUnitMatches = [...text.matchAll(/(\$\s*[0-9][0-9,]*(?:\.\d{1,2})?)(?!\s*\/\s*pza)/gi)];
-  const totalCandidates = nonUnitMatches
-    .map((entry) => parseMoney(entry[1]))
-    .filter((value) => Number.isFinite(value));
-
-  let totalValue = null;
-  if (totalCandidates.length > 0) {
-    if (Number.isFinite(unitValue) && quantity > 1) {
-      const expected = unitValue * quantity;
-      totalValue = totalCandidates.reduce((best, current) => {
-        if (!Number.isFinite(best)) {
-          return current;
-        }
-        return Math.abs(current - expected) < Math.abs(best - expected) ? current : best;
-      }, null);
-    } else {
-      totalValue = totalCandidates[0];
-    }
-  }
+  let totalValue = getLabelledMoney(root, /(subtotal|total|importe)/i);
 
   if (!Number.isFinite(totalValue) && Number.isFinite(unitValue) && quantity > 0) {
     totalValue = unitValue * quantity;
@@ -512,8 +500,12 @@ function extractUnitAndTotalFromCartItem(root, quantity) {
 function collectCartLineRows() {
   const listItems = [...getProductTileContainers()]
     .flatMap((container) => {
-      const itemNodes = [...container.querySelectorAll("li")]
-        .filter((node) => isCartLikeContainer(node));
+      const itemNodes = [...container.querySelectorAll("li.list.dark-gray")]
+        .filter((node) => {
+          const hasProductName = !!node.querySelector("[data-testid='productName']");
+          const hasProductDescription = !!node.querySelector("[data-testid='productDescription']");
+          return hasProductName && hasProductDescription;
+        });
 
       return itemNodes.length > 0 ? itemNodes : [container];
     })
@@ -532,7 +524,18 @@ function collectCartLineRows() {
       return;
     }
 
-    const quantity = extractQuantityFromCartButtons(item) || extractQuantityFromStepper(item);
+    const quantityFromAria = Number.parseInt(
+      (
+        item.querySelector("a[link-identifier='itemClick']")?.getAttribute("aria-label") ||
+        ""
+      ).match(/(\d{1,3})\s+en\s+el\s+carrito/i)?.[1] || "",
+      10,
+    );
+
+    const quantity =
+      (Number.isInteger(quantityFromAria) && quantityFromAria > 0 ? quantityFromAria : null) ||
+      extractQuantityFromCartButtons(item) ||
+      extractQuantityFromStepper(item);
     const prices = extractUnitAndTotalFromCartItem(item, quantity);
 
     if (!prices.unitPrice && !prices.total) {
@@ -717,6 +720,72 @@ function normalizeCartRows(rows) {
   });
 }
 
+/**
+ * Primary cart extraction strategy: parse product link aria-labels.
+ * Aria-labels are embedded in SSR HTML and available regardless of React
+ * hydration state, making this work on Linux where hydration often fails.
+ * Format: "Product Name, $X.XX/pza, N en el carrito [extra info]"
+ */
+function collectCartRowsFromAriaLabels() {
+  const containers = [...new Set([
+    ...document.querySelectorAll("[data-testid='product-tile-container']"),
+    ...document.querySelectorAll("[data-testid*='product-tile-container' i]"),
+  ])];
+
+  const links = containers.length > 0
+    ? containers.flatMap((c) => [...c.querySelectorAll("a[link-identifier='itemClick']")])
+    : [...document.querySelectorAll("a[link-identifier='itemClick']")];
+
+  const rows = [];
+  const seen = new Set();
+
+  links.forEach((link, index) => {
+    const aria = link.getAttribute("aria-label") || "";
+    if (!aria) {
+      return;
+    }
+
+    const priceMatch = aria.match(/,\s*(\$\s*[0-9][0-9,]*(?:\.\d{1,2})?)\s*\/\s*pza/i);
+    if (!priceMatch) {
+      return;
+    }
+
+    const unitValue = parseMoney(priceMatch[1]);
+    if (!Number.isFinite(unitValue)) {
+      return;
+    }
+
+    const qtyMatch = aria.match(/,\s*(\d{1,3})\s+en\s+el\s+carrito/i);
+    const quantity = qtyMatch ? Number.parseInt(qtyMatch[1], 10) : 1;
+    const qty = Number.isInteger(quantity) && quantity > 0 ? quantity : 1;
+
+    const nameEndIdx = aria.search(/,\s*\$\s*[0-9]/);
+    const productName = normalizeText(nameEndIdx > 0 ? aria.slice(0, nameEndIdx) : aria.split(",")[0]);
+    if (!productName) {
+      return;
+    }
+
+    const href = link.getAttribute("href") || "";
+    const itemId = href.match(/\/ip\/(?:seort\/)?([^/?#]+)/i)?.[1] || String(index);
+
+    const key = [itemId, productName].join("|");
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+
+    rows.push({
+      itemId,
+      productName,
+      quantity: qty,
+      unitPrice: formatMoney(unitValue),
+      total: formatMoney(unitValue * qty),
+    });
+  });
+
+  return rows;
+}
+
 function scrapeWalmartCart() {
   if (!/\/cart(?:\/|$|\?)/i.test(location.pathname + location.search)) {
     return {
@@ -726,10 +795,21 @@ function scrapeWalmartCart() {
     };
   }
 
+  // Primary: aria-label parsing — works on all OSes regardless of React hydration state.
+  const ariaRows = collectCartRowsFromAriaLabels();
+  if (ariaRows.length > 0) {
+    return {
+      rows: normalizeCartRows(ariaRows),
+      pageTitle: normalizeText(document.title),
+      pageUrl: location.href,
+    };
+  }
+
+  // Fallback: DOM-based extraction for pages where aria-labels are absent.
   const cartRows = collectCartLineRows();
   const rows = cartRows.length > 0
     ? normalizeCartRows(cartRows)
-    : normalizeCartRows([...collectStructuredRows(), ...collectDomCartRows()]);
+    : normalizeCartRows(collectDomCartRows());
 
   return {
     rows,
