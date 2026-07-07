@@ -61,10 +61,16 @@ browser.runtime.onMessage.addListener((msg) => {
     return;
   }
 
-  browser.downloads.download({
-    url: msg.dataUrl,
-    filename: msg.filename || "online_purchases.csv",
-  }).catch((error) => {
-    console.error("Download failed:", error);
-  });
+  return browser.downloads
+    .download({
+      url: msg.dataUrl,
+      filename: msg.filename || "online_purchases.csv",
+      saveAs: true,
+    })
+    .then(() => ({ ok: true }))
+    .catch((error) => {
+      const message = error?.message || String(error);
+      console.error("Download failed:", error);
+      return { ok: false, error: message };
+    });
 });

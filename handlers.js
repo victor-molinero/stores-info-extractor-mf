@@ -131,11 +131,46 @@ export async function downloadRows() {
   // Concatenate name + timestamp + extension
   const filename = `${name}_${timestamp}${ext}`;
 
-  // Firefox uses Promise-based runtime.sendMessage
-  browser.runtime.sendMessage({ action: "downloadCSV", dataUrl, filename });
-  setStatus(
-    `Downloading ${rows.length} saved row${rows.length === 1 ? "" : "s"}.`,
-  );
+  try {
+    // Prefer direct download from the sidebar and wait for confirmation.
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const objectUrl = URL.createObjectURL(blob);
+
+    try {
+      await browser.downloads.download({
+        url: objectUrl,
+        filename,
+        saveAs: true,
+      });
+    } finally {
+      // Revoke shortly after initiating download to avoid leaking object URLs.
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+    }
+
+    setStatus(
+      `Downloading ${rows.length} saved row${rows.length === 1 ? "" : "s"}.`,
+    );
+  } catch (directError) {
+    try {
+      const response = await browser.runtime.sendMessage({
+        action: "downloadCSV",
+        dataUrl,
+        filename,
+      });
+
+      if (response?.ok === false) {
+        throw new Error(response.error || "Background download failed.");
+      }
+
+      setStatus(
+        `Downloading ${rows.length} saved row${rows.length === 1 ? "" : "s"}.`,
+      );
+    } catch (fallbackError) {
+      const message =
+        fallbackError?.message || directError?.message || "Unable to download CSV.";
+      setStatus(`Download failed: ${message}`);
+    }
+  }
 }
 
 export async function resetRows() {
