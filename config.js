@@ -133,11 +133,7 @@ export const MODES = {
     urlHint: "https://www.walmart.com.mx/cart",
     action: "extract-walmart-cart",
     storageKey: "rows_walmart_cart",
-    filename: () => {
-      const now = new Date();
-      const pad = (value) => String(value).padStart(2, "0");
-      return `walmart_cart_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.csv`;
-    },
+    filename: "walmart_cart.csv",
     emptyMessage: "No cart rows were found on this page.",
     statusPrefix: "Reading the current Walmart cart page...",
     appendMode: false,
