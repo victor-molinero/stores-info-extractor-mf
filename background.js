@@ -1,4 +1,22 @@
-import { clearSessionStorageOnStartup } from './storage.js';
+const SESSION_PREFIX = "session_";
+const CLEARED_KEY = "session_cleared_on_startup";
+
+async function clearSessionStorageOnStartup() {
+  const result = await browser.storage.local.get(CLEARED_KEY);
+
+  if (!result[CLEARED_KEY]) {
+    const allStorage = await browser.storage.local.get(null);
+    const keysToRemove = Object.keys(allStorage).filter((key) =>
+      key.startsWith(SESSION_PREFIX),
+    );
+
+    if (keysToRemove.length > 0) {
+      await browser.storage.local.remove(keysToRemove);
+    }
+
+    await browser.storage.local.set({ [CLEARED_KEY]: Date.now() });
+  }
+}
 
 /**
  * Initialize sidebar on first install and startup

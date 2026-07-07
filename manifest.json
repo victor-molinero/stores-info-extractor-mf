@@ -3,6 +3,14 @@
   "name": "Stores Info Extractor",
   "version": "1.0.0",
   "description": "Extract purchase information from Amazon and Walmart pages with selectable extraction modes.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "stores-info-extractor@urizenix.local",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  },
   "permissions": [
     "activeTab",
     "downloads",

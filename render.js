@@ -96,7 +96,17 @@ export function renderRows(rows, mode) {
 
 export async function refreshView(mode) {
   renderTableHeader(mode);
-  modeHelpEl.innerHTML = `${mode.helpText} Example: <a href="${mode.urlHint}" target="_blank" rel="noopener noreferrer">${mode.urlHint}</a>`;
+  modeHelpEl.replaceChildren();
+
+  const helpTextNode = document.createTextNode(`${mode.helpText} Example: `);
+  const link = document.createElement("a");
+  link.href = mode.urlHint;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.textContent = mode.urlHint;
+
+  modeHelpEl.appendChild(helpTextNode);
+  modeHelpEl.appendChild(link);
 
   const rows = await getStoredRows(mode);
   renderRows(rows, mode);
